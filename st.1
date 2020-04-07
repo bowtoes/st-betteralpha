@@ -4,6 +4,10 @@ st \- simple terminal
 .SH SYNOPSIS
 .B st
 .RB [ \-aiv ]
+.RB [ \-q\" Better Alpha
+.IR alpha ]
+.RB [ \-Q\" Better Alpha
+.IR alpha ]
 .RB [ \-c
 .IR class ]
 .RB [ \-f
@@ -28,6 +32,10 @@ st \- simple terminal
 .PP
 .B st
 .RB [ \-aiv ]
+.RB [ \-q\" Better Alpha
+.IR alpha ]
+.RB [ \-Q\" Better Alpha
+.IR alpha ]
 .RB [ \-c
 .IR class ]
 .RB [ \-f
@@ -54,6 +62,12 @@ is a simple terminal emulator.
 .TP
 .B \-a
 disable alternate screens in terminal
+.TP
+.BI \-q " alpha"\" Better Alpha
+defines the alpha value when st has focus
+.TP
+.BI \-Q " alpha"\" Better Alpha
+defines the alpha value when st doesn't have focus
 .TP
 .BI \-c " class"
 defines the window class (default $TERM).
