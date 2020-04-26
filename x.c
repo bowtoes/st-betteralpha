@@ -59,6 +59,7 @@ static void zoom(const Arg *);
 static void zoomabs(const Arg *);
 static void zoomreset(const Arg *);
 static void ttysend(const Arg *);
+static void toggleAlpha(const Arg *);
 
 /* config.h for applying patches and the configuration. */
 #include "config.h"
@@ -244,9 +245,12 @@ static char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
-static int focused            = 1;    /* Better Alpha */
-static char *opt_alpha        = NULL; /* Better Alpha */
-static char *opt_alphaNoFocus = NULL; /* Better Alpha */
+static int focused             = 1;    /* Better Alpha */
+static int alphaMode           = 1;    /* Better Alpha */
+static char *opt_alpha         = NULL; /* Better Alpha */
+static char *opt_alphaNoFocus  = NULL; /* Better Alpha */
+static char *opt_alpha2        = NULL; /* Better Alpha */
+static char *opt_alpha2NoFocus = NULL; /* Better Alpha */
 static char *opt_class = NULL;
 static char **opt_cmd  = NULL;
 static char *opt_embed = NULL;
@@ -780,14 +784,19 @@ xloadcolor(int i, const char *name, Color *ncolor)
 void
 xloadalpha(void)
 {
+
 	/* set alpha value of bg color */
 	if (opt_alpha)
 		alpha = strtof(opt_alpha, NULL);
 	if (opt_alphaNoFocus)
 		alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
+	if (opt_alpha2)
+		alpha2 = strtof(opt_alpha2, NULL);
+	if (opt_alpha2NoFocus)
+		alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
 
-	const float usedAlpha = focused ? alpha : alphaNoFocus;
-
+	const float usedAlpha = alphaMode ? (focused * alpha  + (1 - focused) * alphaNoFocus ):
+	                                    (focused * alpha2 + (1 - focused) * alpha2NoFocus);
 	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
 	dc.col[defaultbg].pixel &= 0x00FFFFFF;
 	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
@@ -2017,14 +2026,22 @@ run(void)
 void
 usage(void)
 {
-	die("usage: %s [-aiv] [-q alpha] [-Q alpha] [-c class] [-f font]"
-	    " [-g geometry] [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid]"
+	die("usage: %s [-aiv] [-q alpha] [-Q alpha] [-r alpha] [-R alpha]"
+	    " [-c class] [-f font] [-g geometry]\n"
+	    "         [-n name] [-o file] [-T title] [-t title] [-w windowid]"
 	    " [[-e] command [args ...]]\n"
-	    "       %s [-aiv] [-q alpha] [-Q alpha] [-c class] [-f font]"
-	    " [-g geometry] [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid] -l line"
+	    "       %s [-aiv] [-q alpha] [-Q alpha] [-r alpha] [-R alpha]"
+	    " [-c class] [-f font] [-g geometry]\n"
+	    "         [-n name] [-o file] [-T title] [-t title] [-w windowid] -l line"
 	    " [stty_args ...]\n", argv0, argv0);
+}
+
+void /* Better Alpha */
+toggleAlpha(const Arg *dummy)
+{
+	alphaMode = !(alphaMode);
+	xloadalpha();
+	redraw();
 }
 
 int
@@ -2043,6 +2060,12 @@ main(int argc, char *argv[])
 		break;
 	case 'Q': /* Better Alpha */
 		opt_alphaNoFocus = EARGF(usage());
+		break;
+	case 'r': /* Better Alpha */
+		opt_alpha2 = EARGF(usage());
+		break;
+	case 'R': /* Better Alpha */
+		opt_alpha2NoFocus = EARGF(usage());
 		break;
 	case 'c':
 		opt_class = EARGF(usage());
