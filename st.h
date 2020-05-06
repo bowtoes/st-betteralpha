@@ -122,7 +122,3 @@ extern char *termname;
 extern unsigned int tabspaces;
 extern unsigned int defaultfg;
 extern unsigned int defaultbg;
-extern float alpha; /* Better Alpha */
-extern float alphaNoFocus; /* Better Alpha */
-extern float alpha2; /* Better Alpha */
-extern float alpha2NoFocus; /* Better Alpha */

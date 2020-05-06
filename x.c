@@ -59,7 +59,7 @@ static void zoom(const Arg *);
 static void zoomabs(const Arg *);
 static void zoomreset(const Arg *);
 static void ttysend(const Arg *);
-static void toggleAlpha(const Arg *);
+static void toggleAlpha(const Arg *); /* Better Alpha */
 
 /* config.h for applying patches and the configuration. */
 #include "config.h"
@@ -106,7 +106,7 @@ typedef struct {
 	XSetWindowAttributes attrs;
 	int scr;
 	int isfixed; /* is fixed geometry? */
-	int depth; /* bit depth */ /* Better Alpha */
+	int bitdepth; /* Better Alpha */
 	int l, t; /* left and top offset */
 	int gm; /* geometry mask */
 } XWindow;
@@ -742,7 +742,7 @@ xresize(int col, int row)
 
 	XFreePixmap(xw.dpy, xw.buf);
 	xw.buf = XCreatePixmap(xw.dpy, xw.win, win.w, win.h,
-			xw.depth); /* Better Alpha */
+			xw.bitdepth); /* Better Alpha */
 	XftDrawChange(xw.draw, xw.buf);
 	xclear(0, 0, win.w, win.h);
 
@@ -795,8 +795,9 @@ xloadalpha(void)
 	if (opt_alpha2NoFocus)
 		alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
 
-	const float usedAlpha = alphaMode ? (focused * alpha  + (1 - focused) * alphaNoFocus ):
-	                                    (focused * alpha2 + (1 - focused) * alpha2NoFocus);
+	const float usedAlpha = alphaMode ?
+	                        (focused * alpha  + (1 - focused) * alphaNoFocus ):
+	                        (focused * alpha2 + (1 - focused) * alpha2NoFocus);
 	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
 	dc.col[defaultbg].pixel &= 0x00FFFFFF;
 	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
@@ -1141,18 +1142,19 @@ xinit(int cols, int rows)
 		die("can't open display\n");
 	xw.scr = XDefaultScreen(xw.dpy);
 
-	/* ++Better Alpha */
+	/* Better Alpha */
 	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0)))) {
 		parent = XRootWindow(xw.dpy, xw.scr);
-		xw.depth = 32;
+		xw.bitdepth = 32;
 	} else {
 		XGetWindowAttributes(xw.dpy, parent, &attr);
-		xw.depth = attr.depth;
+		xw.bitdepth = attr.depth;
 	}
 
-	XMatchVisualInfo(xw.dpy, xw.scr, xw.depth, TrueColor, &vis);
+	/* Better Alpha */
+	XMatchVisualInfo(xw.dpy, xw.scr, xw.bitdepth, TrueColor, &vis);
+	/* Better Alpha */
 	xw.vis = vis.visual;
-	/* --Better Alpha */
 
 	/* font */
 	if (!FcInit())
@@ -1182,17 +1184,18 @@ xinit(int cols, int rows)
 		| ButtonMotionMask | ButtonPressMask | ButtonReleaseMask;
 	xw.attrs.colormap = xw.cmap;
 
-	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0))))
-		parent = XRootWindow(xw.dpy, xw.scr); /* This if is deleted in the default alphaFocusHighlight */
 	xw.win = XCreateWindow(xw.dpy, parent, xw.l, xw.t,
-			win.w, win.h, 0, xw.depth, InputOutput, /* Better Alpha */
+			win.w, win.h, 0, xw.bitdepth, InputOutput, /* Better Alpha */
 			xw.vis, CWBackPixel | CWBorderPixel | CWBitGravity
 			| CWEventMask | CWColormap, &xw.attrs);
 
 	memset(&gcvalues, 0, sizeof(gcvalues));
 	gcvalues.graphics_exposures = False;
-	xw.buf = XCreatePixmap(xw.dpy, xw.win, win.w, win.h, xw.depth); /* Better Alpha */
-	dc.gc = XCreateGC(xw.dpy, xw.buf, GCGraphicsExposures, &gcvalues); /* Better Alpha */
+	/* Better Alpha */
+	xw.buf = XCreatePixmap(xw.dpy, xw.win, win.w, win.h,
+			xw.bitdepth);
+	dc.gc = XCreateGC(xw.dpy, xw.buf, GCGraphicsExposures,
+			&gcvalues);
 	XSetForeground(xw.dpy, dc.gc, dc.col[defaultbg].pixel);
 	XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, win.w, win.h);
 
@@ -1773,7 +1776,8 @@ focus(XEvent *ev)
 		xseturgency(0);
 		if (IS_SET(MODE_FOCUS))
 			ttywrite("\033[I", 3, 0);
-		if (!focused) { /* Better Alpha */
+		/* Better Alpha */
+		if (!focused) {
 			focused = 1;
 			xloadalpha();
 			redraw();
@@ -1784,7 +1788,8 @@ focus(XEvent *ev)
 		win.mode &= ~MODE_FOCUSED;
 		if (IS_SET(MODE_FOCUS))
 			ttywrite("\033[O", 3, 0);
-		if (focused) { /* Better Alpha */
+		/* Better Alpha */
+		if (focused) {
 			focused = 0;
 			xloadalpha();
 			redraw();
@@ -2036,7 +2041,8 @@ usage(void)
 	    " [stty_args ...]\n", argv0, argv0);
 }
 
-void /* Better Alpha */
+/* Better Alpha */
+void
 toggleAlpha(const Arg *dummy)
 {
 	alphaMode = !(alphaMode);
