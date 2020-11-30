@@ -841,7 +841,6 @@ ttyread(void)
 		if (buflen > 0)
 			memmove(buf, buf + written, buflen);
 		return ret;
-
 	}
 }
 
