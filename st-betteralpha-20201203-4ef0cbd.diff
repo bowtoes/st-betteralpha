@@ -1,0 +1,334 @@
+diff --git a/config.def.h b/config.def.h
+index 6f05dce..d600a27 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -93,6 +93,14 @@ char *termname = "st-256color";
+  */
+ unsigned int tabspaces = 8;
+ 
++static int alphaMode       = 1;   /* Better Alpha */
++static int alphaOn         = 1;   /* Better Alpha */
++static float baseAlpha     = 1.0; /* Better Alpha */
++static float alpha         = 0.8; /* Better Alpha */
++static float alphaNoFocus  = 0.6; /* Better Alpha */
++static float alpha2        = 0.6; /* Better Alpha */
++static float alpha2NoFocus = 0.8; /* Better Alpha */
++
+ /* Terminal colors (16 first used in escape sequence) */
+ static const char *colorname[] = {
+ 	/* 8 normal colors */
+@@ -199,6 +207,10 @@ static Shortcut shortcuts[] = {
+ 	{ TERMMOD,              XK_Y,           selpaste,       {.i =  0} },
+ 	{ ShiftMask,            XK_Insert,      selpaste,       {.i =  0} },
+ 	{ TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
++	/* Better Alpha */
++	{ TERMMOD,              XK_P,           toggleAlphaMode,{.i =  0} },
++	/* Better Alpha */
++	{ TERMMOD,              XK_A,           toggleAlpha,    {.i =  0} },
+ };
+ 
+ /*
+diff --git a/config.mk b/config.mk
+index c070a4a..9ef2dcb 100644
+--- a/config.mk
++++ b/config.mk
+@@ -16,7 +16,8 @@ PKG_CONFIG = pkg-config
+ INCS = -I$(X11INC) \
+        `$(PKG_CONFIG) --cflags fontconfig` \
+        `$(PKG_CONFIG) --cflags freetype2`
+-LIBS = -L$(X11LIB) -lm -lrt -lX11 -lutil -lXft \
++# Better Alpha #
++LIBS = -L$(X11LIB) -lm -lrt -lX11 -lutil -lXft -lXrender \
+        `$(PKG_CONFIG) --libs fontconfig` \
+        `$(PKG_CONFIG) --libs freetype2`
+ 
+diff --git a/st.1 b/st.1
+index 39120b4..da2ac74 100644
+--- a/st.1
++++ b/st.1
+@@ -4,6 +4,14 @@ st \- simple terminal
+ .SH SYNOPSIS
+ .B st
+ .RB [ \-aiv ]
++.RB [ \-q\" Better Alpha
++.IR alpha ]
++.RB [ \-Q\" Better Alpha
++.IR alpha ]
++.RB [ \-r\" Better Alpha
++.IR alpha ]
++.RB [ \-R\" Better Alpha
++.IR alpha ]
+ .RB [ \-c
+ .IR class ]
+ .RB [ \-f
+@@ -28,6 +36,14 @@ st \- simple terminal
+ .PP
+ .B st
+ .RB [ \-aiv ]
++.RB [ \-q\" Better Alpha
++.IR alpha ]
++.RB [ \-Q\" Better Alpha
++.IR alpha ]
++.RB [ \-r\" Better Alpha
++.IR alpha ]
++.RB [ \-R\" Better Alpha
++.IR alpha ]
+ .RB [ \-c
+ .IR class ]
+ .RB [ \-f
+@@ -55,6 +71,18 @@ is a simple terminal emulator.
+ .B \-a
+ disable alternate screens in terminal
+ .TP
++.BI \-q " alpha"\" Better Alpha
++defines the alpha value when st has focus
++.TP
++.BI \-Q " alpha"\" Better Alpha
++defines the alpha value when st doesn't have focus
++.TP
++.BI \-r " alpha"\" Better Alpha
++defines the secondary alpha value when st has focus
++.TP
++.BI \-R " alpha"\" Better Alpha
++defines the secondary alpha value when st doesn't have focus
++.TP
+ .BI \-c " class"
+ defines the window class (default $TERM).
+ .TP
+diff --git a/x.c b/x.c
+index 120e495..f412fcc 100644
+--- a/x.c
++++ b/x.c
+@@ -59,6 +59,9 @@ static void zoom(const Arg *);
+ static void zoomabs(const Arg *);
+ static void zoomreset(const Arg *);
+ static void ttysend(const Arg *);
++static void setAlpha(const Arg *); /* Better Alpha */
++static void toggleAlpha(const Arg *); /* Better Alpha */
++static void toggleAlphaMode(const Arg *); /* Better Alpha */
+ 
+ /* config.h for applying patches and the configuration. */
+ #include "config.h"
+@@ -105,6 +108,7 @@ typedef struct {
+ 	XSetWindowAttributes attrs;
+ 	int scr;
+ 	int isfixed; /* is fixed geometry? */
++	int bitdepth; /* Better Alpha */
+ 	int l, t; /* left and top offset */
+ 	int gm; /* geometry mask */
+ } XWindow;
+@@ -243,6 +247,11 @@ static char *usedfont = NULL;
+ static double usedfontsize = 0;
+ static double defaultfontsize = 0;
+ 
++static int focused             = 1;    /* Better Alpha */
++static char *opt_alpha         = NULL; /* Better Alpha */
++static char *opt_alphaNoFocus  = NULL; /* Better Alpha */
++static char *opt_alpha2        = NULL; /* Better Alpha */
++static char *opt_alpha2NoFocus = NULL; /* Better Alpha */
+ static char *opt_class = NULL;
+ static char **opt_cmd  = NULL;
+ static char *opt_embed = NULL;
+@@ -254,6 +263,59 @@ static char *opt_title = NULL;
+ 
+ static int oldbutton = 3; /* button event on startup: 3 = release */
+ 
++/* Better Alpha */
++void
++setAlpha(const Arg *arg)
++{
++	const float usedAlpha = arg->f;
++	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
++	dc.col[defaultbg].pixel &= 0x00FFFFFF;
++	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
++}
++
++/* Better Alpha */
++void
++loadAlpha(void)
++{
++	Arg arg;
++	if (alphaOn)
++	{
++		/* set alpha value of bg color */
++		if (opt_alpha)
++			alpha = strtof(opt_alpha, NULL);
++		if (opt_alphaNoFocus)
++			alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
++		if (opt_alpha2)
++			alpha2 = strtof(opt_alpha2, NULL);
++		if (opt_alpha2NoFocus)
++			alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
++
++		arg.f = alphaMode ? (focused * alpha  + (1 - focused) * alphaNoFocus):
++		                    (focused * alpha2 + (1 - focused) * alpha2NoFocus);
++	}
++	else
++		arg.f = baseAlpha;
++	setAlpha(&arg);
++}
++
++/* Better Alpha */
++void
++toggleAlpha(const Arg *dummy)
++{
++	alphaOn = !(alphaOn);
++	loadAlpha();
++	redraw();
++}
++
++/* Better Alpha */
++void
++toggleAlphaMode(const Arg *dummy)
++{
++	alphaMode = alphaMode ^ alphaOn;
++	loadAlpha();
++	redraw();
++}
++
+ void
+ clipcopy(const Arg *dummy)
+ {
+@@ -734,7 +796,7 @@ xresize(int col, int row)
+ 
+ 	XFreePixmap(xw.dpy, xw.buf);
+ 	xw.buf = XCreatePixmap(xw.dpy, xw.win, win.w, win.h,
+-			DefaultDepth(xw.dpy, xw.scr));
++			xw.bitdepth); /* Better Alpha */
+ 	XftDrawChange(xw.draw, xw.buf);
+ 	xclear(0, 0, win.w, win.h);
+ 
+@@ -794,6 +856,7 @@ xloadcols(void)
+ 			else
+ 				die("could not allocate color %d\n", i);
+ 		}
++	loadAlpha(); /* Better Alpha */
+ 	loaded = 1;
+ }
+ 
+@@ -1103,11 +1166,26 @@ xinit(int cols, int rows)
+ 	Window parent;
+ 	pid_t thispid = getpid();
+ 	XColor xmousefg, xmousebg;
++	XWindowAttributes attr; /* Better Alpha */
++	XVisualInfo vis; /* Better Alpha */
+ 
+ 	if (!(xw.dpy = XOpenDisplay(NULL)))
+ 		die("can't open display\n");
+ 	xw.scr = XDefaultScreen(xw.dpy);
+-	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
++
++	/* Better Alpha */
++	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0)))) {
++		parent = XRootWindow(xw.dpy, xw.scr);
++		xw.bitdepth = 32;
++	} else {
++		XGetWindowAttributes(xw.dpy, parent, &attr);
++		xw.bitdepth = attr.depth;
++	}
++
++	/* Better Alpha */
++	XMatchVisualInfo(xw.dpy, xw.scr, xw.bitdepth, TrueColor, &vis);
++	/* Better Alpha */
++	xw.vis = vis.visual;
+ 
+ 	/* font */
+ 	if (!FcInit())
+@@ -1117,7 +1195,7 @@ xinit(int cols, int rows)
+ 	xloadfonts(usedfont, 0);
+ 
+ 	/* colors */
+-	xw.cmap = XDefaultColormap(xw.dpy, xw.scr);
++	xw.cmap = XCreateColormap(xw.dpy, parent, xw.vis, None); /* Better Alpha */
+ 	xloadcols();
+ 
+ 	/* adjust fixed window geometry */
+@@ -1137,19 +1215,18 @@ xinit(int cols, int rows)
+ 		| ButtonMotionMask | ButtonPressMask | ButtonReleaseMask;
+ 	xw.attrs.colormap = xw.cmap;
+ 
+-	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0))))
+-		parent = XRootWindow(xw.dpy, xw.scr);
+ 	xw.win = XCreateWindow(xw.dpy, parent, xw.l, xw.t,
+-			win.w, win.h, 0, XDefaultDepth(xw.dpy, xw.scr), InputOutput,
++			win.w, win.h, 0, xw.bitdepth, InputOutput, /* Better Alpha */
+ 			xw.vis, CWBackPixel | CWBorderPixel | CWBitGravity
+ 			| CWEventMask | CWColormap, &xw.attrs);
+ 
+ 	memset(&gcvalues, 0, sizeof(gcvalues));
+ 	gcvalues.graphics_exposures = False;
+-	dc.gc = XCreateGC(xw.dpy, parent, GCGraphicsExposures,
+-			&gcvalues);
++	/* Better Alpha */
+ 	xw.buf = XCreatePixmap(xw.dpy, xw.win, win.w, win.h,
+-			DefaultDepth(xw.dpy, xw.scr));
++			xw.bitdepth);
++	dc.gc = XCreateGC(xw.dpy, xw.buf, GCGraphicsExposures,
++			&gcvalues);
+ 	XSetForeground(xw.dpy, dc.gc, dc.col[defaultbg].pixel);
+ 	XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, win.w, win.h);
+ 
+@@ -1744,12 +1821,24 @@ focus(XEvent *ev)
+ 		xseturgency(0);
+ 		if (IS_SET(MODE_FOCUS))
+ 			ttywrite("\033[I", 3, 0);
++		/* Better Alpha */
++		if (!focused) {
++			focused = 1;
++			loadAlpha();
++			redraw();
++		}
+ 	} else {
+ 		if (xw.ime.xic)
+ 			XUnsetICFocus(xw.ime.xic);
+ 		win.mode &= ~MODE_FOCUSED;
+ 		if (IS_SET(MODE_FOCUS))
+ 			ttywrite("\033[O", 3, 0);
++		/* Better Alpha */
++		if (focused) {
++			focused = 0;
++			loadAlpha();
++			redraw();
++		}
+ 	}
+ }
+ 
+@@ -1981,13 +2070,13 @@ run(void)
+ void
+ usage(void)
+ {
+-	die("usage: %s [-aiv] [-c class] [-f font] [-g geometry]"
+-	    " [-n name] [-o file]\n"
+-	    "          [-T title] [-t title] [-w windowid]"
++	die("usage: %s [-aiv] [-q alpha] [-Q alpha] [-r alpha] [-R alpha]"
++	    " [-c class] [-f font] [-g geometry]\n"
++	    "         [-n name] [-o file] [-T title] [-t title] [-w windowid]"
+ 	    " [[-e] command [args ...]]\n"
+-	    "       %s [-aiv] [-c class] [-f font] [-g geometry]"
+-	    " [-n name] [-o file]\n"
+-	    "          [-T title] [-t title] [-w windowid] -l line"
++	    "       %s [-aiv] [-q alpha] [-Q alpha] [-r alpha] [-R alpha]"
++	    " [-c class] [-f font] [-g geometry]\n"
++	    "         [-n name] [-o file] [-T title] [-t title] [-w windowid] -l line"
+ 	    " [stty_args ...]\n", argv0, argv0);
+ }
+ 
+@@ -2002,6 +2091,18 @@ main(int argc, char *argv[])
+ 	case 'a':
+ 		allowaltscreen = 0;
+ 		break;
++	case 'q': /* Better Alpha */
++		opt_alpha = EARGF(usage());
++		break;
++	case 'Q': /* Better Alpha */
++		opt_alphaNoFocus = EARGF(usage());
++		break;
++	case 'r': /* Better Alpha */
++		opt_alpha2 = EARGF(usage());
++		break;
++	case 'R': /* Better Alpha */
++		opt_alpha2NoFocus = EARGF(usage());
++		break;
+ 	case 'c':
+ 		opt_class = EARGF(usage());
+ 		break;

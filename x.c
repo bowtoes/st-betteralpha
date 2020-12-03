@@ -59,7 +59,9 @@ static void zoom(const Arg *);
 static void zoomabs(const Arg *);
 static void zoomreset(const Arg *);
 static void ttysend(const Arg *);
+static void setAlpha(const Arg *); /* Better Alpha */
 static void toggleAlpha(const Arg *); /* Better Alpha */
+static void toggleAlphaMode(const Arg *); /* Better Alpha */
 
 /* config.h for applying patches and the configuration. */
 #include "config.h"
@@ -246,7 +248,6 @@ static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
 static int focused             = 1;    /* Better Alpha */
-static int alphaMode           = 1;    /* Better Alpha */
 static char *opt_alpha         = NULL; /* Better Alpha */
 static char *opt_alphaNoFocus  = NULL; /* Better Alpha */
 static char *opt_alpha2        = NULL; /* Better Alpha */
@@ -261,6 +262,59 @@ static char *opt_name  = NULL;
 static char *opt_title = NULL;
 
 static int oldbutton = 3; /* button event on startup: 3 = release */
+
+/* Better Alpha */
+void
+setAlpha(const Arg *arg)
+{
+	const float usedAlpha = arg->f;
+	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
+	dc.col[defaultbg].pixel &= 0x00FFFFFF;
+	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
+}
+
+/* Better Alpha */
+void
+loadAlpha(void)
+{
+	Arg arg;
+	if (alphaOn)
+	{
+		/* set alpha value of bg color */
+		if (opt_alpha)
+			alpha = strtof(opt_alpha, NULL);
+		if (opt_alphaNoFocus)
+			alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
+		if (opt_alpha2)
+			alpha2 = strtof(opt_alpha2, NULL);
+		if (opt_alpha2NoFocus)
+			alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
+
+		arg.f = alphaMode ? (focused * alpha  + (1 - focused) * alphaNoFocus):
+		                    (focused * alpha2 + (1 - focused) * alpha2NoFocus);
+	}
+	else
+		arg.f = baseAlpha;
+	setAlpha(&arg);
+}
+
+/* Better Alpha */
+void
+toggleAlpha(const Arg *dummy)
+{
+	alphaOn = !(alphaOn);
+	loadAlpha();
+	redraw();
+}
+
+/* Better Alpha */
+void
+toggleAlphaMode(const Arg *dummy)
+{
+	alphaMode = alphaMode ^ alphaOn;
+	loadAlpha();
+	redraw();
+}
 
 void
 clipcopy(const Arg *dummy)
@@ -780,29 +834,6 @@ xloadcolor(int i, const char *name, Color *ncolor)
 	return XftColorAllocName(xw.dpy, xw.vis, xw.cmap, name, ncolor);
 }
 
-/* Better Alpha */
-void
-xloadalpha(void)
-{
-
-	/* set alpha value of bg color */
-	if (opt_alpha)
-		alpha = strtof(opt_alpha, NULL);
-	if (opt_alphaNoFocus)
-		alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
-	if (opt_alpha2)
-		alpha2 = strtof(opt_alpha2, NULL);
-	if (opt_alpha2NoFocus)
-		alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
-
-	const float usedAlpha = alphaMode ?
-	                        (focused * alpha  + (1 - focused) * alphaNoFocus ):
-	                        (focused * alpha2 + (1 - focused) * alpha2NoFocus);
-	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
-	dc.col[defaultbg].pixel &= 0x00FFFFFF;
-	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
-}
-
 void
 xloadcols(void)
 {
@@ -825,7 +856,7 @@ xloadcols(void)
 			else
 				die("could not allocate color %d\n", i);
 		}
-	xloadalpha(); /* Better Alpha */
+	loadAlpha(); /* Better Alpha */
 	loaded = 1;
 }
 
@@ -1793,7 +1824,7 @@ focus(XEvent *ev)
 		/* Better Alpha */
 		if (!focused) {
 			focused = 1;
-			xloadalpha();
+			loadAlpha();
 			redraw();
 		}
 	} else {
@@ -1805,7 +1836,7 @@ focus(XEvent *ev)
 		/* Better Alpha */
 		if (focused) {
 			focused = 0;
-			xloadalpha();
+			loadAlpha();
 			redraw();
 		}
 	}
@@ -2047,15 +2078,6 @@ usage(void)
 	    " [-c class] [-f font] [-g geometry]\n"
 	    "         [-n name] [-o file] [-T title] [-t title] [-w windowid] -l line"
 	    " [stty_args ...]\n", argv0, argv0);
-}
-
-/* Better Alpha */
-void
-toggleAlpha(const Arg *dummy)
-{
-	alphaMode = !(alphaMode);
-	xloadalpha();
-	redraw();
 }
 
 int

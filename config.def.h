@@ -93,9 +93,12 @@ char *termname = "st-256color";
  */
 unsigned int tabspaces = 8;
 
-static float alpha = 0.8; /* Better Alpha */
-static float alphaNoFocus = 0.6; /* Better Alpha */
-static float alpha2 = 0.6; /* Better Alpha */
+static int alphaMode       = 1;   /* Better Alpha */
+static int alphaOn         = 1;   /* Better Alpha */
+static float baseAlpha     = 1.0; /* Better Alpha */
+static float alpha         = 0.8; /* Better Alpha */
+static float alphaNoFocus  = 0.6; /* Better Alpha */
+static float alpha2        = 0.6; /* Better Alpha */
 static float alpha2NoFocus = 0.8; /* Better Alpha */
 
 /* Terminal colors (16 first used in escape sequence) */
@@ -205,7 +208,9 @@ static Shortcut shortcuts[] = {
 	{ ShiftMask,            XK_Insert,      selpaste,       {.i =  0} },
 	{ TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
 	/* Better Alpha */
-	{ TERMMOD,              XK_P,           toggleAlpha,    {.i =  0} },
+	{ TERMMOD,              XK_P,           toggleAlphaMode,{.i =  0} },
+	/* Better Alpha */
+	{ TERMMOD,              XK_A,           toggleAlpha,    {.i =  0} },
 };
 
 /*
