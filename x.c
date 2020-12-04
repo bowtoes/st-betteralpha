@@ -59,7 +59,9 @@ static void zoom(const Arg *);
 static void zoomabs(const Arg *);
 static void zoomreset(const Arg *);
 static void ttysend(const Arg *);
-static void setAlpha(const Arg *); /* Better Alpha */
+static void resetAlpha(const Arg *); /* Better Alpha */
+static void modAlpha(const Arg *); /* Better Alpha */
+static void useAlpha(const Arg *); /* Better Alpha */
 static void toggleAlpha(const Arg *); /* Better Alpha */
 static void toggleAlphaMode(const Arg *); /* Better Alpha */
 
@@ -168,6 +170,10 @@ static void xseturgency(int);
 static int evcol(XEvent *);
 static int evrow(XEvent *);
 
+static float pickAlpha(void); /* Better Alpha */
+static void loadAlpha(void); /* Better Alpha */
+static void updateAlpha(void); /* Better Alpha */
+
 static void expose(XEvent *);
 static void visibility(XEvent *);
 static void unmap(XEvent *);
@@ -247,6 +253,7 @@ static char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
+static float defBaseAlpha      = 0;    /* Better Alpha */
 static int focused             = 1;    /* Better Alpha */
 static char *opt_alpha         = NULL; /* Better Alpha */
 static char *opt_alphaNoFocus  = NULL; /* Better Alpha */
@@ -264,10 +271,67 @@ static char *opt_title = NULL;
 static int oldbutton = 3; /* button event on startup: 3 = release */
 
 /* Better Alpha */
-void
-setAlpha(const Arg *arg)
+float
+pickAlpha(void)
 {
-	const float usedAlpha = arg->f;
+	if (alphaOn)
+	{
+		if (alphaMode)
+			return focused ? alpha : alphaNoFocus;
+		return focused ? alpha2 : alpha2NoFocus;
+	}
+	return 1;
+}
+
+/* Better Alpha */
+void
+loadAlpha(void)
+{
+	/* set alpha value of bg color */
+
+	defBaseAlpha = /* TODO opt_baseAlpha */ baseAlpha;
+	if (opt_alpha)
+		alpha = strtof(opt_alpha, NULL);
+	if (opt_alphaNoFocus)
+		alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
+	if (opt_alpha2)
+		alpha2 = strtof(opt_alpha2, NULL);
+	if (opt_alpha2NoFocus)
+		alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
+}
+
+/* Better Alpha */
+void
+updateAlpha(void)
+{
+	Arg arg;
+	arg.f = pickAlpha() * baseAlpha;
+	useAlpha(&arg);
+}
+
+/* Better Alpha */
+void
+resetAlpha(const Arg *dummy)
+{
+	baseAlpha = defBaseAlpha;
+	updateAlpha();
+	redraw();
+}
+
+/* Better Alpha */
+void
+modAlpha(const Arg *arg)
+{
+	baseAlpha += arg->f;
+	updateAlpha();
+	redraw();
+}
+
+/* Better Alpha */
+void
+useAlpha(const Arg *arg)
+{
+	const float usedAlpha = arg->f < 0 ? 0 : arg->f > 1 ? 1 : arg->f;
 	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
 	dc.col[defaultbg].pixel &= 0x00FFFFFF;
 	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
@@ -275,35 +339,10 @@ setAlpha(const Arg *arg)
 
 /* Better Alpha */
 void
-loadAlpha(void)
-{
-	Arg arg;
-	if (alphaOn)
-	{
-		/* set alpha value of bg color */
-		if (opt_alpha)
-			alpha = strtof(opt_alpha, NULL);
-		if (opt_alphaNoFocus)
-			alphaNoFocus = strtof(opt_alphaNoFocus, NULL);
-		if (opt_alpha2)
-			alpha2 = strtof(opt_alpha2, NULL);
-		if (opt_alpha2NoFocus)
-			alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
-
-		arg.f = alphaMode ? (focused * alpha  + (1 - focused) * alphaNoFocus):
-		                    (focused * alpha2 + (1 - focused) * alpha2NoFocus);
-	}
-	else
-		arg.f = baseAlpha;
-	setAlpha(&arg);
-}
-
-/* Better Alpha */
-void
 toggleAlpha(const Arg *dummy)
 {
 	alphaOn = !(alphaOn);
-	loadAlpha();
+	updateAlpha();
 	redraw();
 }
 
@@ -312,7 +351,7 @@ void
 toggleAlphaMode(const Arg *dummy)
 {
 	alphaMode = alphaMode ^ alphaOn;
-	loadAlpha();
+	updateAlpha();
 	redraw();
 }
 
@@ -1824,7 +1863,7 @@ focus(XEvent *ev)
 		/* Better Alpha */
 		if (!focused) {
 			focused = 1;
-			loadAlpha();
+			updateAlpha();
 			redraw();
 		}
 	} else {
@@ -1836,7 +1875,7 @@ focus(XEvent *ev)
 		/* Better Alpha */
 		if (focused) {
 			focused = 0;
-			loadAlpha();
+			updateAlpha();
 			redraw();
 		}
 	}
