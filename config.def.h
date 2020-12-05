@@ -216,7 +216,7 @@ static Shortcut shortcuts[] = {
 	/* Better Alpha */
 	{ TERMMOD,              XK_Down,        modAlpha,       {.f = -0.05} },
 	/* Better Alpha */
-	{ TERMMOD,              XK_O,           resetAlpha,    {.i =  0} },
+	{ TERMMOD,              XK_O,           resetAlpha,     {.i =  0} },
 };
 
 /*

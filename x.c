@@ -253,6 +253,7 @@ static char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
+static Color baseColor; /* Better Alpha */
 static float defBaseAlpha      = 0;    /* Better Alpha */
 static int focused             = 1;    /* Better Alpha */
 static char *opt_alpha         = NULL; /* Better Alpha */
@@ -289,6 +290,7 @@ loadAlpha(void)
 {
 	/* set alpha value of bg color */
 
+	baseColor = dc.col[defaultbg];
 	defBaseAlpha = /* TODO opt_baseAlpha */ baseAlpha;
 	if (opt_alpha)
 		alpha = strtof(opt_alpha, NULL);
@@ -298,6 +300,7 @@ loadAlpha(void)
 		alpha2 = strtof(opt_alpha2, NULL);
 	if (opt_alpha2NoFocus)
 		alpha2NoFocus = strtof(opt_alpha2NoFocus, NULL);
+    updateAlpha();
 }
 
 /* Better Alpha */
@@ -331,10 +334,13 @@ modAlpha(const Arg *arg)
 void
 useAlpha(const Arg *arg)
 {
-	const float usedAlpha = arg->f < 0 ? 0 : arg->f > 1 ? 1 : arg->f;
-	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * usedAlpha);
-	dc.col[defaultbg].pixel &= 0x00FFFFFF;
-	dc.col[defaultbg].pixel |= (unsigned char)(0xff * usedAlpha) << 24;
+	/* I have no idea why pixel was being set to before. */
+	/* I have hardly any understanding of X either, but oh well */
+	const float a = arg->f < 0 ? 0 : arg->f > 1 ? 1 : arg->f;
+	dc.col[defaultbg].color.alpha = (unsigned short)(0xffff * a);
+	dc.col[defaultbg].color.red = (unsigned short)(baseColor.color.red * a);
+	dc.col[defaultbg].color.green = (unsigned short)(baseColor.color.green * a);
+	dc.col[defaultbg].color.blue = (unsigned short)(baseColor.color.blue * a);
 }
 
 /* Better Alpha */
