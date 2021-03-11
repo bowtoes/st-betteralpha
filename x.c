@@ -318,6 +318,7 @@ resetAlpha(const Arg *dummy)
 {
 	baseAlpha = defBaseAlpha;
 	updateAlpha();
+	cresize(0,0);
 	redraw();
 }
 
@@ -327,6 +328,7 @@ modAlpha(const Arg *arg)
 {
 	baseAlpha += arg->f;
 	updateAlpha();
+	cresize(0,0);
 	redraw();
 }
 
@@ -349,6 +351,7 @@ toggleAlpha(const Arg *dummy)
 {
 	alphaOn = !(alphaOn);
 	updateAlpha();
+	cresize(0,0);
 	redraw();
 }
 
@@ -358,6 +361,7 @@ toggleAlphaMode(const Arg *dummy)
 {
 	alphaMode = alphaMode ^ alphaOn;
 	updateAlpha();
+	cresize(0,0);
 	redraw();
 }
 
@@ -1870,6 +1874,7 @@ focus(XEvent *ev)
 		if (!focused) {
 			focused = 1;
 			updateAlpha();
+			cresize(0,0);
 			redraw();
 		}
 	} else {
@@ -1882,6 +1887,7 @@ focus(XEvent *ev)
 		if (focused) {
 			focused = 0;
 			updateAlpha();
+			cresize(0,0);
 			redraw();
 		}
 	}
